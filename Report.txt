@@ -1,7 +1,6 @@
 AI/ML Researcher (Speech & Audio) Internship REPORT
 Domain: Speech & Audio (Hindi ASR)
 
-Project Link:- https://github.com/prabhanshu451/ZoshTalk_Assignment.git
 
 --------------------------------------------------
 QUESTION 1: ASR FINE-TUNING & EVALUATION
