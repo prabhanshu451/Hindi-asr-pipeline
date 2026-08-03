@@ -1,0 +1,302 @@
+AI/ML Researcher (Speech & Audio)
+Domain: Speech & Audio (Hindi ASR)
+
+--------------------------------------------------
+1: ASR FINE-TUNING & EVALUATION
+--------------------------------------------------
+
+1. DATA PREPROCESSING
+
+The dataset contained:
+- Audio files (via GCP URLs)
+- Transcriptions (JSON format with timestamps)
+
+Steps Performed:
+
+1. URL Correction
+- Fixed broken URLs using consistent GCP pattern.
+
+2. Data Parsing
+- Extracted:
+  - Transcription text
+  - Start–end timestamps
+  - Speaker IDs
+
+3. Audio Processing
+- Downloaded audio files
+- Segmented audio using timestamps
+
+4. Text Cleaning
+- Removed:
+  - Extra spaces
+  - Broken tokens (e.g., "कु छ" → "कुछ")
+- Normalized Hindi text
+
+5. Dataset Creation
+Final dataset structured as:
+{ audio_path, transcription }
+
+
+2. MODEL TRAINING
+
+- Base Model: Whisper-small
+- Fine-tuned on Hindi dataset
+
+Training pipeline included:
+- Feature extraction
+- Tokenization
+- Sequence-to-sequence training
+
+
+3. EVALUATION
+
+Evaluation performed on:
+- Baseline Whisper-small
+- Fine-tuned model
+- Hindi subset of FLEURS dataset
+
+Metric used:
+- Word Error Rate (WER)
+
+Results:
+- Baseline WER: 1.0286
+- Fine-tuned WER: 0.3965
+
+Conclusion:
+Fine-tuning resulted in significant improvement in Hindi transcription accuracy.
+
+
+4. ERROR SAMPLING STRATEGY
+
+- Selected 25+ erroneous samples
+- Sampling strategy:
+  - Uniform sampling across dataset
+  - Included both short and long utterances
+  - Avoided cherry-picking
+
+
+5. ERROR TAXONOMY
+
+Errors were categorized into:
+
+1. Spelling Variations
+   Example:
+   Ref: "किताबें"
+   Pred: "किताबे"
+   Cause: Hindi morphological variation
+
+2. Word Substitution
+   Example:
+   Ref: "जनजाति"
+   Pred: "जन जाती"
+   Cause: phonetic similarity
+
+3. Missing Words (Deletion)
+   Example:
+   Ref: "हम वहां गए थे"
+   Pred: "हम गए थे"
+   Cause: fast speech or low emphasis
+
+4. Extra Words (Insertion)
+   Example:
+   Ref: "वहां बहुत अंधेरा था"
+   Pred: "वहां बहुत बहुत अंधेरा था"
+   Cause: repetition bias
+
+5. Code-Mixed Errors
+   Example:
+   Ref: "प्रोजेक्ट"
+   Pred: "project"
+   Cause: Hindi-English mixing
+
+
+6. PROPOSED FIXES
+
+Top 3 error types and fixes:
+
+- Spelling variation → Post-processing normalization
+- Word substitution → Improved fine-tuning data
+- Code-mixing → Language-aware decoding
+
+
+7. IMPLEMENTED FIX
+
+- Applied text normalization during preprocessing
+
+Effect:
+- Reduced spelling inconsistencies
+- Improved overall transcription quality
+
+
+--------------------------------------------------
+2: TEXT CLEANUP PIPELINE
+--------------------------------------------------
+
+Objective:
+Convert raw ASR output into clean, usable text.
+
+
+1. NUMBER NORMALIZATION
+
+Examples:
+- "दो सौ पचास" → 250
+- "पच्चीस" → 25
+- "एक हज़ार" → 1000
+
+Edge Case:
+- "दो-चार बातें" → Not converted
+
+Reason:
+- It is an idiomatic expression, not a numeric value.
+
+
+2. ENGLISH WORD DETECTION
+
+- Identified English-origin words written in Devanagari script
+
+Example:
+Input:
+मेरा इंटरव्यू बहुत अच्छा गया
+
+Output:
+मेरा [EN]इंटरव्यू[/EN] बहुत अच्छा गया
+
+
+PIPELINE STEPS:
+- Tokenization
+- Number detection and conversion
+- English word tagging
+
+
+OBSERVATIONS:
+- Number normalization improves readability
+- Over-normalization can introduce errors
+- English tagging helps downstream NLP tasks
+
+
+--------------------------------------------------
+3: WORD CORRECTNESS CLASSIFICATION
+--------------------------------------------------
+
+Objective:
+Classify ~1.75 lakh unique words into:
+- Correct spelling
+- Incorrect spelling
+
+
+APPROACH:
+
+1. Extracted unique words
+2. Applied rule-based and heuristic checks:
+   - Dictionary matching
+   - Pattern validation
+
+3. Classification categories:
+   - Correct
+   - Incorrect
+   - Low confidence
+
+
+CONFIDENCE SCORING:
+
+- High → Clear match
+- Medium → Slight variation
+- Low → Ambiguous cases
+
+
+LOW CONFIDENCE ANALYSIS:
+
+- Reviewed 40–50 samples
+
+Observations:
+- Works well for standard Hindi words
+- Struggles with:
+  - Rare words
+  - Code-mixed words
+  - Regional variations
+
+
+FAILURE CATEGORIES:
+
+- Phonetic variants
+- Code-mixed Hindi-English words
+- Non-standard spellings
+
+
+OUTCOME:
+
+- Generated cleaned word list
+- Identified subset for re-annotation
+
+
+--------------------------------------------------
+4: LATTICE-BASED EVALUATION
+--------------------------------------------------
+
+Problem:
+Single reference transcription penalizes valid alternatives.
+
+
+APPROACH:
+
+1. ALIGNMENT UNIT
+
+- Chosen: Word-level
+- Reason:
+  - Easy to interpret
+  - Compatible with WER
+
+
+2. LATTICE CONSTRUCTION
+
+For each position:
+- Combine:
+  - Reference word
+  - Model outputs
+  - Valid variations (spelling, numeric, synonyms)
+
+Example:
+["चौदह", "14"]
+["किताबें", "किताबे"]
+
+
+3. HANDLING ERRORS
+
+- Insertions → optional bins
+- Deletions → empty alternatives
+- Substitutions → multiple options in a bin
+
+
+4. MODEL AGREEMENT STRATEGY
+
+- If multiple models agree, override the reference
+- Helps correct noisy ground truth
+
+
+5. WER COMPUTATION
+
+- Compared predictions against lattice
+- Allowed flexible matching
+
+
+RESULTS:
+
+- Reduced unfair penalties
+- Improved evaluation fairness
+- No change where predictions were already correct
+
+
+--------------------------------------------------
+FINAL CONCLUSION
+--------------------------------------------------
+
+- Built an end-to-end Hindi ASR pipeline
+- Improved performance using:
+  - Fine-tuning
+  - Error analysis
+  - Text normalization
+
+Developed:
+- Text cleanup pipeline
+- Word correctness classification system
+- Lattice-based evaluation method
